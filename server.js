@@ -57,4 +57,32 @@ app.get("/api/bank/all", async (req, res) => {
   }
 });
 
+app.post("/api/bank/withdraw", async (req, res) => {
+  try {
+    const { username, accountNumber, amount } = req.body;
+    
+    if (!username || !accountNumber || !amount) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    const bankAccount = await BankDetails.findOne({ accountNumber });
+    if (!bankAccount) {
+      return res.status(404).json({ error: "Account not found" });
+    }
+
+    if (bankAccount.withdrawableAmount < amount) {
+      return res.status(400).json({ error: "Insufficient balance" });
+    }
+
+    bankAccount.withdrawableAmount -= amount;
+    bankAccount.requestedMoney = amount;
+    await bankAccount.save();
+
+    res.status(200).json({ message: "Withdrawal successful", newBalance: bankAccount.withdrawableAmount,requestedMoney:amount});
+  } catch (error) {
+    console.error("Withdrawal Error:", error);
+    res.status(500).json({ error: "Server error: Unable to process withdrawal" });
+  }
+});
+
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
